@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Moon Walker — $MWALK</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -10,11 +13,10 @@
         .wrap { text-align: center; padding: 40px; max-width: 500px; }
         h1 { font-size: 48px; margin-bottom: 12px; }
         p { color: #666; font-size: 16px; margin-bottom: 24px; }
-        .btn { display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 12px; color: #fff; text-decoration: none; font-size: 18px; font-weight: 700; margin: 8px; }
-        .btn:hover { opacity: 0.9; }
-        .btn-tool { background: linear-gradient(135deg, #333, #444); }
+        .btn { display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #7ec8ff, #6366f1); border-radius: 12px; color: #fff; text-decoration: none; font-size: 18px; font-weight: 700; margin: 8px; transition: all 0.2s; }
+        .btn:hover { opacity: 0.9; transform: scale(1.02); }
         .footer { margin-top: 40px; color: #444; font-size: 13px; }
-        .footer a { color: #a855f7; text-decoration: none; }
+        .footer a { color: #7ec8ff; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -22,8 +24,8 @@
         <h1>🗺️</h1>
         <h1>Moon Walker</h1>
         <p>$MWALK on vibe/vibe</p>
-        <a href="game.html" class="btn">🎮 Play Game</a>
-        <a href="tool.html" class="btn btn-tool">🛠️ Tool</a>
+        <a href="game.html?v=2" class="btn">🎮 Play Game</a>
+        <a href="tool.html?v=2" class="btn" style="background: linear-gradient(135deg, #333, #444);">🛠️ Tool</a>
         <div class="footer">
             Built for <a href="https://testnet.vibevibe.fun">vibe/vibe</a> Season 0
         </div>
