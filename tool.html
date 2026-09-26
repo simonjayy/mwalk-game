@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Map — Token Explorer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 40px 0 20px; }
+        .logo { font-size: 60px; margin-bottom: 10px; }
+        h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #c0c0c0, #3b82f6, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        .subtitle { color: #888; font-size: 14px; }
+        .card {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            border: 1px solid #2a2a2a;
+        }
+        .card h2 { font-size: 16px; color: #c0c0c0; margin-bottom: 16px; }
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 6px 12px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 20px;
+            color: #888;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-btn.active {
+            background: rgba(192, 192, 192, 0.2);
+            border-color: #c0c0c0;
+            color: #c0c0c0;
+        }
+        .map-container {
+            height: 200px;
+            background: #0a0a0a;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .map-canvas { width: 100%; height: 100%; }
+        .token-list { max-height: 300px; overflow-y: auto; }
+        .token-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #0a0a0a;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            border: 1px solid #2a2a2a;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .token-item:hover { border-color: #c0c0c0; }
+        .token-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .token-info { flex: 1; }
+        .token-name { font-weight: 600; font-size: 14px; }
+        .token-ticker { font-size: 12px; color: #888; }
+        .token-progress {
+            width: 60px;
+            text-align: right;
+        }
+        .progress-text { font-weight: 700; font-size: 14px; }
+        .progress-bar-mini {
+            width: 60px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        .progress-fill-mini {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s;
+        }
+        .stock-section {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid #0f3460;
+        }
+        .stock-section h2 { color: #ffd700; }
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #1a2744;
+        }
+        .stock-item:last-child { border-bottom: none; }
+        .stock-name { font-size: 14px; }
+        .stock-price { font-size: 14px; color: #00ff88; }
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            color: #555;
+            font-size: 12px;
+        }
+        .footer a { color: #c0c0c0; text-decoration: none; }
+        .token-badge {
+            display: inline-block;
+            background: rgba(192, 192, 192, 0.2);
+            border: 1px solid #c0c0c0;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            color: #c0c0c0;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🗺️</div>
+            <h1>Moon Map</h1>
+            <p class="subtitle">Visual map of vibe/vibe tokens</p>
+            <div class="token-badge">Powered by $MWALK</div>
+        </div>
+
+        <div class="card">
+            <h2>🌌 Token Universe</h2>
+            <div class="map-container">
+                <canvas id="mapCanvas" class="map-canvas"></canvas>
+            </div>
+            <div class="filters">
+                <div class="filter-btn active" onclick="filterTokens('all')">All</div>
+                <div class="filter-btn" onclick="filterTokens('hot')">🔥 Hot</div>
+                <div class="filter-btn" onclick="filterTokens('grad')">🎓 Near Grad</div>
+                <div class="filter-btn" onclick="filterTokens('new')">🆕 New</div>
+            </div>
+            <div class="token-list" id="tokenList"></div>
+        </div>
+
+        <div class="card stock-section">
+            <h2>📈 Lunar Portfolio</h2>
+            <p style="color: #888; font-size: 12px; margin-bottom: 12px;">Space and frontier tech tokenized stocks</p>
+            <div class="stock-item">
+                <span class="stock-name">SpaceX (pre-IPO)</span>
+                <span class="stock-price">$112.50</span>
+            </div>
+            <div class="stock-item">
+                <span class="stock-name">Rocket Lab (RKLB)</span>
+                <span class="stock-price">$18.40</span>
+            </div>
+            <div class="stock-item">
+                <span class="stock-name">AST SpaceMobile (ASTS)</span>
+                <span class="stock-price">$28.60</span>
+            </div>
+            <div class="stock-item">
+                <span class="stock-name">Intuitive Machines (LUNR)</span>
+                <span class="stock-price">$8.90</span>
+            </div>
+            <div class="stock-item">
+                <span class="stock-name">Virgin Galactic (SPCE)</span>
+                <span class="stock-price">$1.85</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            Built for the <a href="https://testnet.vibevibe.fun">vibe/vibe</a> community<br>
+            Your guide to the moon 🌙
+        </div>
+    </div>
+
+    <script>
+        const tokens = [
+            { name: 'VIBE GUY', ticker: 'VIBEGUY', progress: 73, status: 'hot' },
+            { name: 'Football', ticker: 'FTB', progress: 80, status: 'grad' },
+            { name: 'ACN', ticker: 'ACN', progress: 48, status: 'hot' },
+            { name: 'Gas', ticker: 'GAS', progress: 43, status: 'hot' },
+            { name: 'Phoenix Rising', ticker: 'PHNX', progress: 25, status: 'new' },
+            { name: 'Vibe Tribe', ticker: 'VTRIBE', progress: 47, status: 'new' },
+            { name: 'Spark Ignite', ticker: 'IGNITE', progress: 12, status: 'new' },
+            { name: 'Moon Walker', ticker: 'MWALK', progress: 5, status: 'new' },
+            { name: 'Crypto Nomad', ticker: 'CNMD', progress: 3, status: 'new' },
+            { name: 'Justin Sun', ticker: 'SUN', progress: 28, status: 'hot' },
+            { name: 'Mr Beast', ticker: 'BEAST', progress: 14, status: 'hot' },
+            { name: 'Shakira', ticker: 'KIRA', progress: 20, status: 'hot' },
+        ];
+
+        let currentFilter = 'all';
+
+        function filterTokens(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderTokens();
+            drawMap();
+        }
+
+        function getFilteredTokens() {
+            if (currentFilter === 'all') return tokens;
+            return tokens.filter(t => t.status === currentFilter);
+        }
+
+        function renderTokens() {
+            const filtered = getFilteredTokens();
+            const container = document.getElementById('tokenList');
+            
+            container.innerHTML = filtered.map(t => {
+                const color = t.progress >= 75 ? '#ffd700' : t.progress >= 50 ? '#3b82f6' : t.progress >= 25 ? '#a855f7' : '#555';
+                return `
+                    <div class="token-item">
+                        <div class="token-dot" style="background: ${color}"></div>
+                        <div class="token-info">
+                            <div class="token-name">${t.name}</div>
+                            <div class="token-ticker">$${t.ticker}</div>
+                        </div>
+                        <div class="token-progress">
+                            <div class="progress-text" style="color: ${color}">${t.progress}%</div>
+                            <div class="progress-bar-mini">
+                                <div class="progress-fill-mini" style="width: ${t.progress}%; background: ${color}"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function drawMap() {
+            const canvas = document.getElementById('mapCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+            
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Draw stars
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * w;
+                const y = Math.random() * h;
+                const size = Math.random() * 2;
+                ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.5 + 0.1})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw tokens as planets
+            const filtered = getFilteredTokens();
+            filtered.forEach((t, i) => {
+                const angle = (i / filtered.length) * Math.PI * 2 - Math.PI / 2;
+                const radius = 50 + (t.progress / 100) * 40;
+                const x = w / 2 + Math.cos(angle) * radius;
+                const y = h / 2 + Math.sin(angle) * radius;
+                const size = 3 + (t.progress / 100) * 8;
+                
+                const color = t.progress >= 75 ? '#ffd700' : t.progress >= 50 ? '#3b82f6' : t.progress >= 25 ? '#a855f7' : '#555';
+                
+                // Glow
+                const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 3);
+                glow.addColorStop(0, color + '40');
+                glow.addColorStop(1, 'transparent');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Planet
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Center moon
+            ctx.fillStyle = '#c0c0c0';
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 2, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('MOON', w / 2, h / 2 + 20);
+        }
+
+        renderTokens();
+        setTimeout(drawMap, 100);
+    </script>
+</body>
+</html>
