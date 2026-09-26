@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Moon Walker — $MWALK</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; overflow: hidden; touch-action: manipulation; }
+        canvas { display: block; }
+        .hud { position: fixed; top: 12px; left: 12px; z-index: 10; pointer-events: none; }
+        .hud-row { display: flex; gap: 8px; margin-bottom: 6px; }
+        .hud-item { background: rgba(0,0,0,0.75); padding: 6px 12px; border-radius: 8px; font-size: 13px; backdrop-filter: blur(4px); }
+        .hud-val { font-weight: 700; }
+        .hud-val.dist { color: #c0c0c0; }
+        .hud-val.stars { color: #ffd700; }
+        .hud-val.lives { color: #ff4444; }
+        .hud-val.mission { color: #00ff88; }
+        .controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10; }
+        .ctrl { width: 64px; height: 64px; background: rgba(192,192,192,0.15); border: 1px solid rgba(192,192,192,0.3); border-radius: 50%; color: #c0c0c0; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; }
+        .ctrl:active { background: rgba(192,192,192,0.3); }
+        .start { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .start h1 { font-size: 36px; background: linear-gradient(135deg,#c0c0c0,#3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+        .start p { color: #666; font-size: 14px; margin-bottom: 20px; text-align: center; max-width: 280px; }
+        .start .missions { background: #141414; border-radius: 12px; padding: 14px; margin-bottom: 20px; width: 260px; }
+        .start .missions h3 { font-size: 13px; color: #ffd700; margin-bottom: 8px; }
+        .start .missions div { font-size: 12px; color: #888; padding: 3px 0; }
+        .btn { padding: 14px 32px; border: none; border-radius: 10px; color: #fff; font-size: 18px; font-weight: 700; cursor: pointer; }
+        .btn:active { transform: scale(0.96); }
+        .btn-go { background: linear-gradient(135deg,#c0c0c0,#3b82f6); }
+        .btn-tw { background: linear-gradient(135deg,#1da1f2,#0d8ecf); }
+        .game-over { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: none; align-items: center; justify-content: center; flex-direction: column; }
+        .game-over.show { display: flex; }
+        .game-over h2 { font-size: 28px; color: #c0c0c0; margin-bottom: 8px; }
+        .game-over .final { font-size: 52px; font-weight: 800; color: #ffd700; }
+        .game-over .sub { color: #888; font-size: 13px; margin: 8px 0 4px; }
+        .game-over .recap { background: #141414; border-radius: 12px; padding: 14px; margin: 12px 0; font-size: 13px; width: 260px; }
+        .game-over .recap div { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1a1a1a; }
+        .game-over .recap .k { color: #666; } .game-over .recap .v { color: #fff; font-weight: 600; }
+        .mission-pop { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,255,136,0.15); border: 1px solid #00ff88; border-radius: 12px; padding: 12px 20px; color: #00ff88; font-size: 14px; font-weight: 700; z-index: 20; opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+        .mission-pop.show { opacity: 1; }
+        .stock-bar { position: fixed; top: 12px; right: 12px; z-index: 10; pointer-events: none; }
+        .stock-tag { background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; font-size: 10px; margin-bottom: 3px; text-align: right; }
+        .stock-tag .n { color: #666; } .stock-tag .p { color: #00ff88; }
+    </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud">
+    <div class="hud-row">
+        <div class="hud-item">🗺️ <span class="hud-val dist" id="hDist">0</span>m</div>
+        <div class="hud-item">⭐ <span class="hud-val stars" id="hStars">0</span></div>
+        <div class="hud-item">❤️ <span class="hud-val lives" id="hLives">3</span></div>
+    </div>
+    <div class="hud-row">
+        <div class="hud-item">🎯 <span class="hud-val mission" id="hMission">—</span></div>
+    </div>
+</div>
+
+<div class="stock-bar">
+    <div class="stock-tag"><span class="n">SpaceX</span> <span class="p">$112</span></div>
+    <div class="stock-tag"><span class="n">RKLB</span> <span class="p">$18</span></div>
+</div>
+
+<div class="controls" id="controls" style="display:none">
+    <div class="ctrl" id="btnLeft">←</div>
+    <div class="ctrl" id="btnJump">↑</div>
+    <div class="ctrl" id="btnRight">→</div>
+</div>
+
+<div class="mission-pop" id="missionPop"></div>
+
+<div class="start" id="startScreen">
+    <h1>🗺️ Moon Walker</h1>
+    <p>Walk across the moon! Jump over asteroids. Collect stars. Complete missions.</p>
+    <div class="missions" id="missionPreview"></div>
+    <button class="btn btn-go" onclick="startGame()">🗺️ Start Walking</button>
+</div>
+
+<div class="game-over" id="go">
+    <h2>🗺️ Journey's End</h2>
+    <div class="final" id="goDist">0</div>
+    <div class="sub">meters walked</div>
+    <div class="recap" id="recap"></div>
+    <button class="btn btn-go" onclick="startGame()">🗺️ Walk Again</button>
+    <button class="btn btn-tw" onclick="share()">📤 Share</button>
+</div>
+
+<script>
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+let W, H, GROUND;
+function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; GROUND = H - 80; }
+resize(); addEventListener('resize', resize);
+
+// Missions
+const MISSION_DEFS = [
+    { id:'m100',  text:'Walk 100m without a hit', check: s => s.dist>=100 && s.hitsThisRun===0, reward:50 },
+    { id:'m500',  text:'Walk 500m', check: s => s.dist>=500, reward:100 },
+    { id:'star10',text:'Collect 10 stars', check: s => s.stars>=10, reward:30 },
+    { id:'star25',text:'Collect 25 stars', check: s => s.stars>=25, reward:60 },
+    { id:'m1000', text:'Walk 1000m', check: s => s.dist>=1000, reward:200 },
+    { id:'m2000', text:'Walk 2000m without a hit', check: s => s.dist>=2000 && s.hitsThisRun===0, reward:500 },
+];
+
+let walker, dist, starsCollected, lives, gameActive, speed;
+let obstacles, starDrops, powerups, particles, dustTrail;
+let frameCount, stars3, chunks;
+let currentMission, missionsCompleted, hitsThisRun;
+let coyoteFrames, jumpBuffered;
+let activePU; // {type, timer}
+let shakeMag;
+
+const LS = 'mwalk_v2';
+let save = JSON.parse(localStorage.getItem(LS)||'{}');
+let bestDist = save.best || 0;
+let totalStars = save.stars || 0;
+let completedMissions = save.missions || [];
+
+// 3-layer parallax stars
+function genStars() {
+    stars3 = [[],[],[]];
+    for(let l=0;l<3;l++) for(let i=0;i<40;i++) stars3[l].push({
+        x: Math.random()*W*2, y: Math.random()*H,
+        s: 0.5+l*0.5, speed: 0.2+l*0.3
+    });
+}
+
+// Chunks: hand-built + procedural
+function genChunk(type) {
+    const obs = [], strs = [], pups = [];
+    if(type==='safe') {
+        // Empty or one easy star
+        if(Math.random()<0.5) strs.push({x:W*0.5, y:GROUND-80});
+    } else if(type==='standard') {
+        // 1-2 obstacles, 1-2 stars
+        for(let i=0;i<1+Math.floor(Math.random()*2);i++) obs.push({x:200+Math.random()*(W-400), size:18+Math.random()*15});
+        for(let i=0;i<1+Math.floor(Math.random()*2);i++) strs.push({x:150+Math.random()*(W-300), y:GROUND-60-Math.random()*80});
+    } else { // spike
+        // 2-3 obstacles close together, maybe a powerup
+        for(let i=0;i<2+Math.floor(Math.random()*2);i++) obs.push({x:150+i*120+Math.random()*40, size:20+Math.random()*12});
+        if(Math.random()<0.3) pups.push({x:W*0.5, y:GROUND-100, type:['magnet','shield','lowgrav','speed'][Math.floor(Math.random()*4)]});
+    }
+    return { obs, strs, pups, width:W };
+}
+
+function startGame() {
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('go').classList.remove('show');
+    document.getElementById('controls').style.display = 'flex';
+
+    walker = { x:W*0.3, y:GROUND-20, vy:0, w:24, h:30, grounded:true, facing:1 };
+    dist=0; starsCollected=0; lives=3; gameActive=true; speed=3;
+    obstacles=[]; starDrops=[]; powerups=[]; particles=[]; dustTrail=[];
+    frameCount=0; chunks=[]; hitsThisRun=0;
+    coyoteFrames=0; jumpBuffered=false; activePU=null; shakeMag=0;
+
+    // Pick a mission
+    const available = MISSION_DEFS.filter(m => !completedMissions.includes(m.id));
+    currentMission = available.length ? available[Math.floor(Math.random()*available.length)] : null;
+    document.getElementById('hMission').textContent = currentMission ? currentMission.text : 'All done!';
+
+    // Generate initial safe chunks
+    for(let i=0;i<3;i++) chunks.push(genChunk('safe'));
+
+    // Preview missions
+    const preview = document.getElementById('missionPreview');
+    preview.innerHTML = '<h3>🎯 Missions</h3>' + MISSION_DEFS.slice(0,4).map(m => 
+        `<div>${completedMissions.includes(m.id)?'✅':'⬜'} ${m.text} (+${m.reward}⭐)</div>`
+    ).join('');
+
+    updateHUD();
+}
+
+function jump() {
+    if(!gameActive) return;
+    if(walker.grounded || coyoteFrames > 0) {
+        let jv = -11;
+        if(activePU && activePU.type==='lowgrav') jv = -14;
+        walker.vy = jv;
+        walker.grounded = false;
+        coyoteFrames = 0;
+    } else {
+        jumpBuffered = true;
+    }
+}
+
+function moveLeft() { if(gameActive) walker.facing = -1; }
+function moveRight() { if(gameActive) walker.facing = 1; }
+
+function update() {
+    if(!gameActive) return;
+    frameCount++;
+    dist += speed * 0.05;
+
+    // Speed ramp
+    speed = 3 + Math.floor(dist / 200) * 0.3;
+
+    // Walker physics
+    walker.vy += 0.4;
+    if(activePU && activePU.type==='lowgrav') walker.vy -= 0.15;
+    walker.y += walker.vy;
+    walker.x += walker.facing * 1.5;
+
+    // Clamp x
+    walker.x = Math.max(30, Math.min(W-30, walker.x));
+
+    // Coyote time
+    if(walker.grounded) coyoteFrames = 6;
+    else if(coyoteFrames > 0) coyoteFrames--;
+
+    // Ground
+    if(walker.y >= GROUND - walker.h) {
+        walker.y = GROUND - walker.h;
+        walker.vy = 0;
+        if(!walker.grounded) {
+            walker.grounded = true;
+            // Jump buffer
+            if(jumpBuffered) { jump(); jumpBuffered = false; }
+        }
+        // Dust
+        if(frameCount%4===0) dustTrail.push({x:walker.x, y:GROUND, life:15});
+    }
+
+    // Spawn chunks
+    if(frameCount % 120 === 0) {
+        const types = ['safe','standard','standard','spike'];
+        const type = dist < 100 ? 'safe' : types[Math.floor(Math.random()*types.length)];
+        const chunk = genChunk(type);
+        chunk.offset = frameCount;
+        chunks.push(chunk);
+    }
+
+    // Move and check obstacles
+    obstacles = obstacles.filter(o => {
+        o.x -= speed;
+        if(o.x < -50) return false;
+        // Collision
+        const dx = walker.x - o.x, dy = walker.y - (GROUND - o.size);
+        if(Math.abs(dx) < walker.w/2+o.size && Math.abs(dy) < walker.h/2+o.size) {
+            if(activePU && activePU.type==='shield') {
+                activePU = null;
+                spawnBurst(o.x, GROUND-o.size, '#00ff88', 10);
+                return false;
+            }
+            lives--;
+            hitsThisRun++;
+            shake(8);
+            spawnBurst(walker.x, walker.y, '#ff4444', 12);
+            if(lives <= 0) endGame();
+            return false;
+        }
+        return true;
+    });
+
+    // Stars
+    starDrops = starDrops.filter(s => {
+        s.x -= speed;
+        const magnet = activePU && activePU.type==='magnet';
+        if(magnet) {
+            const dx = walker.x-s.x, dy = walker.y-s.y;
+            const d = Math.sqrt(dx*dx+dy*dy);
+            if(d < 120) { s.x += dx/d*4; s.y += dy/d*4; }
+        }
+        const dx = walker.x-s.x, dy = walker.y-s.y;
+        if(Math.sqrt(dx*dx+dy*dy) < 25) {
+            starsCollected++;
+            totalStars++;
+            spawnBurst(s.x, s.y, '#ffd700', 6);
+            return false;
+        }
+        return s.x > -30;
+    });
+
+    // Powerups
+    powerups = powerups.filter(p => {
+        p.x -= speed;
+        const dx = walker.x-p.x, dy = walker.y-p.y;
+        if(Math.sqrt(dx*dx+dy*dy) < 30) {
+            activePU = { type:p.type, timer:300 };
+            showPU(p.type);
+            return false;
+        }
+        return p.x > -30;
+    });
+
+    // Active PU timer
+    if(activePU) {
+        activePU.timer--;
+        if(activePU.timer <= 0) activePU = null;
+    }
+
+    // Dust
+    dustTrail = dustTrail.filter(d => { d.life--; return d.life>0; });
+
+    // Particles
+    particles = particles.filter(p => { p.x+=p.vx; p.y+=p.vy; p.vy+=0.08; p.life--; return p.life>0; });
+
+    // Extract from chunks
+    chunks.forEach(c => {
+        if(!c.spawned) {
+            c.spawned = true;
+            c.obs.forEach(o => obstacles.push({...o, x:o.x+frameCount*speed}));
+            c.strs.forEach(s => starDrops.push({...s, x:s.x+frameCount*speed}));
+            c.pups.forEach(p => powerups.push({...p, x:p.x+frameCount*speed}));
+        }
+    });
+
+    // Check mission
+    if(currentMission && currentMission.check({dist:Math.floor(dist), stars:starsCollected, hitsThisRun})) {
+        completedMissions.push(currentMission.id);
+        totalStars += currentMission.reward;
+        showMission('✅ ' + currentMission.text + ' (+' + currentMission.reward + '⭐)');
+        saveState();
+        currentMission = null;
+    }
+
+    shakeMag *= 0.9;
+    if(shakeMag<0.5) shakeMag=0;
+
+    updateHUD();
+}
+
+function draw() {
+    cx.save();
+    if(shakeMag>0) cx.translate((Math.random()-0.5)*shakeMag,(Math.random()-0.5)*shakeMag);
+
+    // Sky
+    const grad = cx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,'#000010');
+    grad.addColorStop(1,'#0a0a2a');
+    cx.fillStyle = grad;
+    cx.fillRect(0,0,W,H);
+
+    // Parallax stars
+    stars3.forEach((layer,li) => {
+        cx.fillStyle = `rgba(255,255,255,${0.15+li*0.1})`;
+        layer.forEach(s => {
+            s.x -= s.speed;
+            if(s.x < -5) s.x = W+5;
+            cx.beginPath(); cx.arc(s.x, s.y, s.s, 0, Math.PI*2); cx.fill();
+        });
+    });
+
+    // Shrinking Earth (distance fantasy)
+    const earthSize = Math.max(5, 40 - dist*0.01);
+    cx.fillStyle = '#1a3a5a';
+    cx.beginPath(); cx.arc(W-60, 60, earthSize, 0, Math.PI*2); cx.fill();
+    cx.fillStyle = '#2a5a8a';
+    cx.beginPath(); cx.arc(W-60, 60, earthSize*0.7, 0, Math.PI*2); cx.fill();
+
+    // Ground
+    cx.fillStyle = '#c0c0c0';
+    cx.fillRect(0, GROUND, W, H-GROUND);
+
+    // Obstacles
+    obstacles.forEach(o => {
+        cx.fillStyle = '#ff4444';
+        cx.beginPath(); cx.arc(o.x, GROUND-o.size, o.size, 0, Math.PI*2); cx.fill();
+        cx.fillStyle = '#cc2222';
+        cx.beginPath(); cx.arc(o.x, GROUND-o.size, o.size*0.6, 0, Math.PI*2); cx.fill();
+    });
+
+    // Stars
+    starDrops.forEach(s => {
+        cx.fillStyle = '#ffd700';
+        cx.beginPath();
+        for(let i=0;i<5;i++) {
+            const a = i*Math.PI*2/5 - Math.PI/2;
+            const r = i%2===0 ? 10 : 5;
+            cx.lineTo(s.x+Math.cos(a)*r, s.y+Math.sin(a)*r);
+        }
+        cx.closePath(); cx.fill();
+    });
+
+    // Powerups
+    const puIcons = {magnet:'🧲', shield:'🛡', lowgrav:'🪶', speed:'⚡'};
+    powerups.forEach(p => {
+        cx.fillStyle = 'rgba(0,255,136,0.2)';
+        cx.beginPath(); cx.arc(p.x, p.y, 16, 0, Math.PI*2); cx.fill();
+        cx.font = '16px sans-serif';
+        cx.textAlign = 'center';
+        cx.fillText(puIcons[p.type]||'?', p.x, p.y+5);
+    });
+
+    // Dust trail
+    dustTrail.forEach(d => {
+        cx.fillStyle = `rgba(192,192,192,${d.life/15})`;
+        cx.beginPath(); cx.arc(d.x, d.y, 3, 0, Math.PI*2); cx.fill();
+    });
+
+    // Walker
+    cx.save();
+    cx.translate(walker.x, walker.y);
+    cx.scale(walker.facing, 1);
+
+    // Glow if PU active
+    if(activePU) {
+        cx.fillStyle = 'rgba(0,255,136,0.15)';
+        cx.beginPath(); cx.arc(0, 0, 25, 0, Math.PI*2); cx.fill();
+    }
+
+    // Body
+    cx.fillStyle = '#3b82f6';
+    cx.fillRect(-walker.w/2, -walker.h/2, walker.w, walker.h);
+
+    // Helmet
+    cx.fillStyle = '#c0c0c0';
+    cx.beginPath(); cx.arc(0, -walker.h/2-5, 12, 0, Math.PI*2); cx.fill();
+
+    // Visor
+    cx.fillStyle = '#1a1a3a';
+    cx.beginPath(); cx.arc(3, -walker.h/2-5, 7, 0, Math.PI*2); cx.fill();
+
+    // Legs (simple animation)
+    const legPhase = Math.sin(frameCount*0.2) * 4;
+    cx.fillStyle = '#2a2a5a';
+    cx.fillRect(-6, walker.h/2, 5, 8+legPhase);
+    cx.fillRect(2, walker.h/2, 5, 8-legPhase);
+
+    cx.restore();
+
+    // Particles
+    particles.forEach(p => {
+        cx.fillStyle = p.color;
+        cx.globalAlpha = p.life/20;
+        cx.beginPath(); cx.arc(p.x, p.y, 2, 0, Math.PI*2); cx.fill();
+    });
+    cx.globalAlpha = 1;
+
+    // PU indicator
+    if(activePU) {
+        cx.fillStyle = '#00ff88';
+        cx.font = 'bold 12px sans-serif';
+        cx.textAlign = 'center';
+        cx.fillText(puIcons[activePU.type]||'PU', walker.x, walker.y-30);
+    }
+
+    cx.restore();
+}
+
+function spawnBurst(x,y,color,n) {
+    for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:15,color});
+}
+
+function showPU(type) {
+    const names = {magnet:'🧲 Magnet!', shield:'🛡 Shield!', lowgrav:'🪶 Low Gravity!', speed:'⚡ Speed!'};
+    showMission(names[type]||type);
+}
+
+function showMission(text) {
+    const el = document.getElementById('missionPop');
+    el.textContent = text;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function shake(m) { shakeMag = Math.max(shakeMag, m); }
+
+function updateHUD() {
+    document.getElementById('hDist').textContent = Math.floor(dist);
+    document.getElementById('hStars').textContent = starsCollected;
+    document.getElementById('hLives').textContent = lives;
+}
+
+function endGame() {
+    gameActive = false;
+    const d = Math.floor(dist);
+    if(d > bestDist) bestDist = d;
+    totalStars += starsCollected;
+    saveState();
+    document.getElementById('goDist').textContent = d;
+    document.getElementById('recap').innerHTML = `
+        <div><span class="k">Distance</span><span class="v">${d}m</span></div>
+        <div><span class="k">Stars</span><span class="v">${starsCollected}</span></div>
+        <div><span class="k">Best Ever</span><span class="v">${bestDist}m</span></div>
+        <div><span class="k">Missions Done</span><span class="v">${completedMissions.length}/${MISSION_DEFS.length}</span></div>
+    `;
+    document.getElementById('go').classList.add('show');
+    document.getElementById('controls').style.display = 'none';
+}
+
+function share() {
+    const text = `🗺️ Moon Walker — $MWALK\n\nWalked ${Math.floor(dist)}m on the moon!\n⭐ ${starsCollected} stars collected\n🎯 ${completedMissions.length} missions done\n\nCan you beat my distance?\n\nPlay: [link]\n@vibevibe_fun`;
+    open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
+}
+
+function saveState() {
+    localStorage.setItem(LS, JSON.stringify({best:bestDist, stars:totalStars, missions:completedMissions}));
+}
+
+// Input
+document.getElementById('btnLeft').addEventListener('pointerdown', e => { e.preventDefault(); moveLeft(); });
+document.getElementById('btnRight').addEventListener('pointerdown', e => { e.preventDefault(); moveRight(); });
+document.getElementById('btnJump').addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
+addEventListener('keydown', e => {
+    if(e.key==='ArrowLeft'||e.key==='a') moveLeft();
+    if(e.key==='ArrowRight'||e.key==='d') moveRight();
+    if(e.key==='ArrowUp'||e.key===' '||e.key==='w') { e.preventDefault(); jump(); }
+});
+
+genStars();
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+loop();
+</script>
+</body>
+</html>
